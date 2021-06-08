@@ -7,6 +7,11 @@
 !/src/*/Makefile
 !/src/*/README
 
+src/matrix/t.bin
+egs/fame/s5/data-fmllr-tri3/
+.gitignore
+
+
 # Object files.
 *.slo
 *.lo

@@ -4,11 +4,11 @@
 . ./path.sh
 . ./utils/parse_options.sh
 
-stage=0
+stage=7
 feat_nj=10
 train_nj=10
 decode_nj=10
-famecorpus=./corpus
+famecorpus=/vol/tensusers/mbentum/FRISIAN_ASR/corpus
 
 if [ -d $famecorpus ] ; then
   echo "Fame corpus present. OK."
@@ -120,8 +120,12 @@ fi
 if [ $stage -le 8 ]; then
   echo "Starting DNN training and decoding."
   local/nnet/run_dnn.sh || exit 1;
+  echo "start second step"
   local/nnet/run_dnn_fbank.sh || exit 1;
+  echo "done DNN training"
 fi
 
+echo "start decoding"
 #score
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+echo "done decoding"

@@ -10,11 +10,13 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd=queue.pl
-export decode_cmd="queue.pl --mem 2G"
+# changed queue to run
+export train_cmd=run.pl
+export decode_cmd="run.pl --mem 2G"
 # the use of cuda_cmd is deprecated, used only in 'nnet1',
-export cuda_cmd="queue.pl --gpu 1"
+export cuda_cmd="run.pl --gpu 1"
 
+# does nothing but good example to fit it to ponyland
 if [[ "$(hostname -f)" == "*.fit.vutbr.cz" ]]; then
   queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
   export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
