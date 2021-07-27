@@ -39,7 +39,7 @@ fi
 
 if [ $stage -le 2 ]; then
   # Feature extraction
-  for x in train devel test; do
+  for x in train dev test; do
       steps/make_mfcc.sh --nj $feat_nj --cmd "$train_cmd" data/$x exp/make_mfcc/$x mfcc || exit 1;
       steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc || exit 1;
   done
