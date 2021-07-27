@@ -1,0 +1,42 @@
+name 				file type 		notes
+utils 				directory 		stores helper scripts such as validate_data_dir and fix_data_dir
+									soft linked to the wsj egs /vol/tensusers5/mbentum/lm_martijn/opt/kaldi/egs/wsj/s5/utils
+steps 				directory 		helper script for decoding also helper scripts for dnn training
+									soft linked to the wsj egs /vol/tensusers5/mbentum/lm_martijn/opt/kaldi/egs/wsj/s5/steps
+cmd.sh 				bash script 	taken from fame, set to use run.pl instead of queue
+path.sh 			bash script 	taken from fame (sets sort to C sorting, important for fix dir)
+mfcc 				directory 		contains mfcc files with extracted MFCC features, https://kaldi-asr.org/doc/data_prep.html
+conf 				directory 		contains several config files for different steps/stages in the decoding process
+									origin /vol/tensusers5/mbentum/lm_martijn/opt/kaldi/egs/fame/s5/conf (fame)
+run_cgn.sh 			bash script 	run script that handles training decoder for CGN (for example purposes)
+									origin /vol/tensusers3/ctejedor/lacristianmachine/opt/kaldi/egs/kaldi_egs_CGN/s5/conf
+run.sh 				bash script 	run script to train the decoder (this file will be the latest version of training the
+									decoder, adapted from /vol/tensusers5/mbentum/lm_martijn/opt/kaldi/egs/fame/s5/run.sh
+exp 				directory 		AM and decoding results (i.e. WER) are stored here for the training steps
+exp_bu 				directory 		back up of exp directory after running run.sh
+exp_v1 				directory 		first run of run.sh upto stage 7 (exp/tri folder is created with decoding results)
+									stopped at /local/nnet3/run_ivector_common.sh due to some bad characters in data/train/text 
+									(also in dev and test). Removed bad characters and started fresh. In addition in this
+									directory the dev and test contains materials from FAME, in the newer version Fame
+									materials are only included in train, dev and test are only Humainr materials i.e.
+									council meetings
+local 				directory 		files and script specific for this project
+
+
+
+
+calls to train AM and get decoder results
+./run.sh 							check the stage of the script, set to stage 0 for a fresh start
+									maybe need to move the exp folder to no loose previous training e.g mv exp exp_backup
+./local/nnet3/run_ivector_common.sh must be run after run.sh. It trains on the exp/tri3 folder (can be changed in the script)
+									creates several new folders in the data folder (data augmentation by speed perbutation)
+									depends on speaker information
+./local/chain/run_tdnn.sh 			must be run after run_ivector_common. will create this folder with results 
+									exp/chain_dnn/tdnn1a_sp_bi/
+./local/pytorchnn/run_nnlm.sh 		rescoring with the pytorch transformer model results will be in these folders
+									exp/chain_dnn/tdnn1a_sp_bi/decode_test_pytorch_transformer
+									exp/chain_dnn/tdnn1a_sp_bi/decode_test_pytorch_transformer_nbest
+exp_no_sid_humainr 					the exp folder with training based on humainr data without true speaker ids, audio filenames
+									were used as a stand in. Newer versions use a pytorch nn to classify speakers.
+exp_meeting_sid_humainr 			exp folder for the run with a pytorch nn classified speakers at meeting level
+									WER got worse 33 -> 34. Meetings are fairly long (hours), now trying at audio file level (minutes)
