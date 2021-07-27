@@ -7,6 +7,8 @@
 !/src/*/Makefile
 !/src/*/README
 
+*.ctm
+
 src/matrix/t.bin
 egs/fame/s5/data-fmllr-tri3/
 .gitignore
