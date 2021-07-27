@@ -44,12 +44,8 @@ for f in $symtab $dir/lat.1.gz $data/text; do
 done
 
 
-ref_filtering_cmd="cat"
-[ -x local/wer_output_filter ] && ref_filtering_cmd="local/wer_output_filter"
-[ -x local/wer_ref_filter ] && ref_filtering_cmd="local/wer_ref_filter"
-hyp_filtering_cmd="cat"
-[ -x local/wer_output_filter ] && hyp_filtering_cmd="local/wer_output_filter"
-[ -x local/wer_hyp_filter ] && hyp_filtering_cmd="local/wer_hyp_filter"
+ref_filtering_cmd="local/wer_ref_filter"
+hyp_filtering_cmd="local/wer_hyp_filter"
 
 
 if $decode_mbr ; then
@@ -58,6 +54,7 @@ else
   echo "$0: scoring with word insertion penalty=$word_ins_penalty"
 fi
 
+echo "filtering command $ref_filtering_cmd"
 
 mkdir -p $dir/scoring_kaldi
 cat $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
