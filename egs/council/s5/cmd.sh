@@ -12,7 +12,7 @@
 
 # changed queue to run
 export train_cmd=run.pl
-export decode_cmd="run.pl --mem 2G"
+export decode_cmd="run.pl --mem 4G"
 # the use of cuda_cmd is deprecated, used only in 'nnet1',
 export cuda_cmd="run.pl --gpu 1"
 
