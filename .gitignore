@@ -11,6 +11,11 @@ src/matrix/t.bin
 egs/fame/s5/data-fmllr-tri3/
 .gitignore
 
+egs/council/data/train/
+egs/council/data/dev/
+egs/council/data/test/
+.nfs*
+
 
 # Object files.
 *.slo
