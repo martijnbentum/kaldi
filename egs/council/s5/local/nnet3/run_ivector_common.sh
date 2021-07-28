@@ -11,14 +11,16 @@ set -e -o pipefail
 
 # Repurposed for CGN by LvdW 2017
 # Repurposed for council by Martijn 2021 
+
 stage=0
 nj=30
 min_seg_len=1.55  # min length in seconds... we do this because chain training
                   # will discard segments shorter than 1.5 seconds.   Must remain in sync
                   # with the same option given to prepare_lores_feats_and_alignments.sh
 train_set='train'   # you might set this to e.g. train.
-gmm='tri3'          # This specifies a GMM-dir from the features of the type you're training the system on;
+gmm='tri3'          # This specifies a GMM-dir from the features of the type you're training the system on
                          # it should contain alignments for 'train_set'.
+data_dir='language_split_and_fame' # sets which data directories are worked on 
 dev='dev'
 test='test'
 exp='exp'
@@ -26,16 +28,42 @@ exp='exp'
 num_threads_ubm=32
 nnet3_affix=_dnn  # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
+test_run= 					   # if set to anything only show  parameters
 
 . ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 
 
+if [ $data_dir == 'simple' ] ; then
+	directories=(${train_set}_sp $dev $test)
+elif [ $data_dir == 'language_split' ] ; then
+	directories=(${train_set}_sp $dev $test dev_nl dev_fr dev_mx test_nl test_fr test_mx)
+elif [ $data_dir == 'language_split_and_fame' ] ; then
+	directories=(${train_set}_sp $dev $test dev_nl dev_fr dev_mx test_nl test_fr test_mx)
+	directories+=(fame_dev_nl fame_dev_fr fame_dev_mx fame_test_nl fame_test_fr fame_test_mx)
+elif [ $data_dir == 'train' ] ; then
+	directories=(${train_set}_sp)
+elif [ $data_dir == 'dev' ] ; then
+	directories=($dev)
+elif [ $data_dir == 'test' ] ; then
+	directories=($test)
+elif [ $data_dir == 'dev_test' ] ; then
+	directories=($dev $test)
+fi
+
 gmm_dir=$exp/${gmm}
 ali_dir=$exp/${gmm}
 
 echo "running script with stage $stage"
+
+echo "running script with data directories:"
+echo ${directories[@]}
+
+if [ ! -z $test_run ]; then
+	echo this is a test run stopping early
+	exit
+fi
 
 echo "checking the existence of final.mdl files"
 for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
@@ -44,11 +72,6 @@ for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
     exit 1
   fi
 done
-
-for datadir in ${train_set}_sp $dev $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
-	echo $datadir
-done
-
 
 if [ $stage -le 2 ] && [ -f data/${train_set}_sp_hires/feats.scp ]; then
   echo "checks for stage 2"
@@ -66,19 +89,15 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: creating high-resolution MFCC features, stage 2"
   
-  #for datadir in ${train_set}_sp dev test; do
-  for datadir in ${train_set}_sp $dev $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
+  for datadir in ${directories[@]}; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
   done
-  #cp data/dev/text_ref data/dev_hires/ #text_ref is identical to text, text_ref does not exist in my dev dir
-  #cp data/test/text_ref data/test_hires/ #text_ref is identical to text, text_ref does not exist in my test dir
 
   # do volume-perturbation on the training data prior to extracting hires
   # features; this helps make trained nnets more invariant to test data volume.
   utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires
 
-  #for datadir in ${train_set}_sp dev test; do
-  for datadir in ${train_set}_sp $dev $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
+  for datadir in ${directories[@]}; do
     steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires
     steps/compute_cmvn_stats.sh data/${datadir}_hires
@@ -93,7 +112,7 @@ if [ $stage -le 3 ]; then
   utils/data/combine_short_segments.sh \
      data/${train_set}_sp_hires $min_seg_len data/${train_set}_sp_hires_comb
 
-  echo "copying cmvn from original directories (train/dev/test) to the newly created sp_hires_com"
+  echo "copying cmvn from original directories (train) to the newly created sp_hires_comb"
   # just copy over the CMVN to avoid having to recompute it.
   cp data/${train_set}_sp_hires/cmvn.scp data/${train_set}_sp_hires_comb/
   utils/fix_data_dir.sh data/${train_set}_sp_hires_comb/
@@ -188,13 +207,24 @@ if [ $stage -le 7 ]; then
     ${temp_data_root}/${train_set}_sp_hires_comb_max2 \
     $exp/nnet3${nnet3_affix}/extractor $ivectordir
 
+
+	if [ $x == $train ]; then 
+		echo "skipping $train"
+	else 
+		echo $x
+	fi
   # Also extract iVectors for the test data, but in this case we don't need the speed
   # perturbation (sp) or small-segment concatenation (comb).
   #for data in dev test; do
-  for data in $dev $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-      data/${data}_hires $exp/nnet3${nnet3_affix}/extractor \
-      $exp/nnet3${nnet3_affix}/ivectors_${data}_hires
+  #for data in $dev $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
+  for datadir in ${directories[@]}; do
+	if [ $datadir == ${train_set}_sp ]; then
+		echo "skipping training folder"
+	else
+		steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
+		  data/${data}_hires $exp/nnet3${nnet3_affix}/extractor \
+		  $exp/nnet3${nnet3_affix}/ivectors_${data}_hires
+	fi
   done
 fi
 
