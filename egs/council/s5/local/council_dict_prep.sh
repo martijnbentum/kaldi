@@ -5,16 +5,17 @@
 
 # Apache 2.0
 
-corpus=$1
-set -e -o pipefail
-if [ -z "$corpus" ] ; then
-    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech corpus"
-    exit 1
-fi
+corpus=/vol/tensusers3/Frisiansubtitling/COUNCIL
+
+. ./cmd.sh
+. ./path.sh
+. utils/parse_options.sh
+
 if [ ! -d "$corpus" ] ; then
     echo >&2 "The directory $corpus does not exist"
 fi
 
+echo "creating the data/lang and data/local/dict directories"
 mkdir -p data/lang data/local/dict
 
 
