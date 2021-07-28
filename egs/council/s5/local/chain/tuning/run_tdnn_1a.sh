@@ -17,7 +17,8 @@
 # (some of which are also used in this script directly).
 
 # repurposed from egs/Tedlium for CGN by LvdW
-# repurposed from /vol/tensusers3/ctejedor/lacristianmachine/opt/kaldi/egs/kaldi_egs_CGN/s5/local/chain
+# repurposed from /vol/tensusers3/ctejedor/lacristianmachine/opt/kaldi/egs/kaldi_egs_CGN/s5/local/chain by Martijn Bentum
+
 echo "-+- EXE3 -+-"
 echo "+++ DNN training/decoding +++"
 echo $(date)
@@ -33,6 +34,9 @@ exp='exp'
 gmm='tri3'  # the gmm for the target data
 num_threads_ubm=32
 nnet3_affix=_dnn # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+do_training='yes'
+do_decoding='yes'
+data_dir="language_split_and_fame"
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
@@ -42,13 +46,30 @@ tdnn_affix=1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
-echo "$0 $@"  # Print the command line for logging
-echo "running with stage $stage"
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+if [ $data_dir == 'simple' ] ; then
+	directories=($dev $test)
+elif [ $data_dir == 'language_split' ] ; then
+	directories=($dev $test dev_nl dev_fr dev_mx test_nl test_fr test_mx)
+elif [ $data_dir == 'language_split_and_fame' ] ; then
+	directories=($dev $test dev_nl dev_fr dev_mx test_nl test_fr test_mx)
+	directories+=(fame_dev_nl fame_dev_fr fame_dev_mx fame_test_nl fame_test_fr fame_test_mx)
+elif [ $data_dir == 'dev' ] ; then
+	directories=($dev)
+elif [ $data_dir == 'test' ] ; then
+	directories=($test)
+elif [ $data_dir == 'dev_test' ] ; then
+	directories=($dev $test)
+fi
+
+echo "$0 $@ $(date)"  # Print the command line for logging
+echo "running with stage $stage"
+echo "running script with data directories:"
+echo ${directories[@]}
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -72,6 +93,17 @@ tree_dir=$exp/chain${nnet3_affix}/tree_bi${tree_affix} # exp/chain_dnn/tree_bi
 lat_dir=$exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats # exp/chain_dnn/tri3_train_sp_comb_lats
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi # exp/chain_dnn/tdnn_dnn_sp_bi
 lores_train_data_dir=data/${train_set}_sp_comb # data/train_sp_comb
+
+
+if [ $do_training == "yes" ]; then
+	stage=17
+	echo "starting with training, setting stage to $stage"
+fi
+if [ $do_training != "yes" -a $do_decoding == "yes" ]; then
+	stage=20
+	echo "starting with decoding, setting stage to $stage"
+fi
+	
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
@@ -129,6 +161,8 @@ if [ $stage -le 16 ]; then
       --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
+
+echo "preperation phase is done starting training $date"
 
 if [ $stage -le 17 ]; then
   mkdir -p $dir
@@ -221,7 +255,6 @@ if [ $stage -le 18 ]; then
     --dir $dir
 fi
 
-
 if [ $stage -le 19 ]; then
   echo "+++ 19. utils/mkgraph.sh +++"
   echo $(date)
@@ -231,10 +264,13 @@ if [ $stage -le 19 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $dir/graph # lang dir was originally: lang_s_test_tgpr 
 fi
 
+echo "training done $(date)"
+
 if [ $stage -le 20 ]; then
   echo "+++ 20. steps/nnet3/decode.sh dev test+++"
   echo $(date)
-  for x in $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
+  #for x in $dev'_nl' $dev'_fr' $dev'_mx' $test $test'_nl' $test'_fr' $test'_mx' ; do
+  for x in ${directories[@]}; do
 	  echo "decoding $x"
     nspk=$(wc -l <data/$x/spk2utt)
     [ "$nspk" -gt "$decode_nj" ] && nspk=$decode_nj
